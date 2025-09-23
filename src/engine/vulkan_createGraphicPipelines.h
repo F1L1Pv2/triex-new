@@ -23,12 +23,13 @@ typedef struct {
 
 bool createGraphicPipeline_opts(CreateGraphicsPipelineARGS args);
 
-#define createGraphicPipeline(vertexShaderIn, fragmentShaderIn, pipelinePtrOut, pipelineLayoutPtrOut, ...) createGraphicPipeline_opts((CreateGraphicsPipelineARGS){\
+#define createGraphicPipeline(vertexShaderIn, fragmentShaderIn, pipelinePtrOut, pipelineLayoutPtrOut, outColorFormatIn, ...) createGraphicPipeline_opts((CreateGraphicsPipelineARGS){\
     .vertexShader = vertexShaderIn,\
     .fragmentShader = fragmentShaderIn,\
     .topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST,\
     .pipelineOUT = pipelinePtrOut,\
     .pipelineLayoutOUT = pipelineLayoutPtrOut,\
+    .outColorFormat = outColorFormatIn,\
     __VA_ARGS__})
 
 #endif

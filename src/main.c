@@ -34,6 +34,7 @@ int main(){
         vertexShader, fragmentShader,
         &pipeline,
         &pipelineLayout,
+        swapchainImageFormat,
         .vertexSize = sizeof(float)*2,
         .vertexInputAttributeDescriptionsCount = 1,
         .vertexInputAttributeDescriptions = &(VkVertexInputAttributeDescription){
@@ -42,7 +43,6 @@ int main(){
             .format = VK_FORMAT_R32G32_SFLOAT,
             .offset = 0,
         },
-        .outColorFormat = swapchainImageFormat,
     )) return 1;
 
     VkFence renderingFence;
