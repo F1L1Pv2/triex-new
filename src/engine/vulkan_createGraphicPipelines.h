@@ -18,7 +18,7 @@ typedef struct {
     bool culling;
     bool depthTest;
     VkPrimitiveTopology topology;
-    VkFormat* outColorFormat;
+    VkFormat outColorFormat;
 } CreateGraphicsPipelineARGS;
 
 bool createGraphicPipeline_opts(CreateGraphicsPipelineARGS args);

@@ -42,6 +42,7 @@ int main(){
             .format = VK_FORMAT_R32G32_SFLOAT,
             .offset = 0,
         },
+        .outColorFormat = swapchainImageFormat,
     )) return 1;
 
     VkFence renderingFence;
