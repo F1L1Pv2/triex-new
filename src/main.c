@@ -19,18 +19,17 @@ int main(){
     if(!compileShader(vertexShaderSrc, shaderc_vertex_shader,&vertexShader)) return 1;
 
     VkShaderModule fragmentShader;
-    char* fragmentShaderSrc = 
-    "#version 450\n"
-    "layout(location = 0) out vec4 outColor;\n"
-    "layout(location = 0) in vec3 inColor;\n"
-    "void main() {\n"
-    "   outColor = vec4(inColor,1.0f);"
-    "\n}";
+    const char* fragmentShaderSrc = 
+        "#version 450\n"
+        "layout(location = 0) out vec4 outColor;\n"
+        "layout(location = 0) in vec3 inColor;\n"
+        "void main() {\n"
+        "   outColor = vec4(inColor,1.0f);"
+        "\n}";
     if(!compileShader(fragmentShaderSrc, shaderc_fragment_shader,&fragmentShader)) return 1;
 
     VkPipeline pipeline;
     VkPipelineLayout pipelineLayout;
-
     if(!createGraphicPipeline(
         vertexShader, fragmentShader,
         &pipeline,
@@ -138,7 +137,7 @@ int main(){
             .pImageIndices = &imageIndex
         });
 
-        platform_sleep(1000/24);
+        platform_sleep(1000/60);
     }
 
     return 0;
