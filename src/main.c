@@ -1,9 +1,19 @@
 #include <stdio.h>
+#include <string.h>
 
 #include "engine/vulkan_simple.h"
 
 int main(){
     vulkan_init_with_window("TRIEX NEW!", 640, 480);
+
+    VkCommandBuffer cmd;
+    if(vkAllocateCommandBuffers(device,&(VkCommandBufferAllocateInfo){
+        .sType = VK_STRUCTURE_TYPE_COMMAND_BUFFER_ALLOCATE_INFO,
+        .pNext = NULL,
+        .commandPool = commandPool,
+        .level = VK_COMMAND_BUFFER_LEVEL_PRIMARY,
+        .commandBufferCount = 1,
+    },&cmd) != VK_SUCCESS) return 1;
 
     VkShaderModule vertexShader;
     const char* vertexShaderSrc = 
@@ -16,7 +26,7 @@ int main(){
         "   color = colors[gl_VertexIndex]; \n"
         "}";
 
-    if(!compileShader(vertexShaderSrc, shaderc_vertex_shader,&vertexShader)) return 1;
+    if(!vkCompileShader(device, vertexShaderSrc, shaderc_vertex_shader,&vertexShader)) return 1;
 
     VkShaderModule fragmentShader;
     const char* fragmentShaderSrc = 
@@ -26,11 +36,11 @@ int main(){
         "void main() {\n"
         "   outColor = vec4(inColor,1.0f);"
         "\n}";
-    if(!compileShader(fragmentShaderSrc, shaderc_fragment_shader,&fragmentShader)) return 1;
+    if(!vkCompileShader(device, fragmentShaderSrc, shaderc_fragment_shader,&fragmentShader)) return 1;
 
     VkPipeline pipeline;
     VkPipelineLayout pipelineLayout;
-    if(!createGraphicPipeline(
+    if(!vkCreateGraphicPipeline(
         vertexShader, fragmentShader,
         &pipeline,
         &pipelineLayout,
@@ -67,8 +77,10 @@ int main(){
     };
     VkBuffer vertexBuffer;
     VkDeviceMemory vertexBufferMemory;
-    if(!createBuffer(VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, sizeof(vertices), &vertexBuffer, &vertexBufferMemory)) return 1;
-    if(!transferDataToMemory(vertexBufferMemory, vertices, 0, sizeof(vertices))) return 1;
+    void* vertexBufferMapped;
+    if(!vkCreateBufferEX(device, VK_BUFFER_USAGE_VERTEX_BUFFER_BIT, VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT, sizeof(vertices), &vertexBuffer, &vertexBufferMemory)) return 1;
+    if(vkMapMemory(device, vertexBufferMemory, 0, sizeof(vertices), 0, &vertexBufferMapped) != VK_SUCCESS) return 1;
+    memcpy(vertexBufferMapped, vertices, sizeof(vertices));
 
     uint32_t imageIndex;
     while(platform_still_running()){

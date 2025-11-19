@@ -1,4 +1,5 @@
 #include "MinWin.h"
+#include <mmsystem.h>
 #include <stdbool.h>
 #include <malloc.h>
 #include <stdint.h>
@@ -14,6 +15,7 @@ static bool window_open = false;
 static bool error = false;
 
 bool platform_still_running(){
+    if(!window_open) timeEndPeriod(1);
     return window_open;
 }
 
@@ -203,6 +205,8 @@ void platform_create_window(const char* title, size_t width, size_t height){
     window_open = true;
 
     platform_fill_keycode_lookup_table();
+
+    timeBeginPeriod(1);
 }
 
 MSG msg;
@@ -227,13 +231,22 @@ void platform_sleep(size_t milis){
     Sleep(milis);
 }
 
-uint64_t platform_get_time(){
+uint64_t platform_get_time_milis(){
     FILETIME ft;
     ULARGE_INTEGER uli;
     GetSystemTimeAsFileTime(&ft);
     uli.LowPart = ft.dwLowDateTime;
     uli.HighPart = ft.dwHighDateTime;
     return (uli.QuadPart - 116444736000000000ULL) / 10000ULL;
+}
+
+uint64_t platform_get_time_nanos() {
+    FILETIME ft;
+    ULARGE_INTEGER uli;
+    GetSystemTimeAsFileTime(&ft);
+    uli.LowPart = ft.dwLowDateTime;
+    uli.HighPart = ft.dwHighDateTime;
+    return (uli.QuadPart - 116444736000000000ULL) * 100ULL;
 }
 
 void platform_fill_keycode_lookup_table(){
@@ -430,6 +443,26 @@ void platform_release_drag_and_drop(char** files, int count){
     free(files);
 }
 
+bool platform_free_dynamic_library(void* dll)
+{
+  BOOL freeResult = FreeLibrary((HMODULE)dll);
+
+  return (bool)freeResult;
+}
+
+void* platform_load_dynamic_library(const char* dll)
+{
+  HMODULE result = LoadLibraryA(dll);
+
+  return result;
+}
+
+void* platform_load_dynamic_function(void* dll, const char* funName)
+{
+  FARPROC proc = GetProcAddress((HMODULE)dll, funName);
+
+  return (void*)proc;
+}
 
 #ifndef DEBUG
 
