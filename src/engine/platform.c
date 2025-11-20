@@ -15,7 +15,7 @@ bool platform_resize_window_callback(bool minimized){
     if(platform_window_minimized) return true;
 
     if(!swapchain) return true;
-    VkResult result = vkDeviceWaitIdle(device);
+    VkResult result = vkQueueWaitIdle(presentQueue);
     if(result != VK_SUCCESS){
         fprintf(stderr, "ERROR: Couldn't wait for fences\n");
         return false;
