@@ -14,6 +14,7 @@
 
 #include <stdbool.h>
 bool vulkan_init_with_window(const char* title, size_t width, size_t height);
+bool vulkan_init_with_window_and_depth_buffer(const char* title, size_t width, size_t height);
 bool vulkan_init_headless();
 
 #endif

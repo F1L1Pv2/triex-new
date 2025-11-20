@@ -28,6 +28,21 @@ bool platform_resize_window_callback(bool minimized){
     swapchainImageViews.count = 0;
     vkDestroySwapchainKHR(device, swapchain, NULL);
 
+    if(swapchainHasDepth){
+        for(size_t i = 0; i < swapchainDepthImageViews.count; i++){
+            vkDestroyImageView(device,swapchainDepthImageViews.items[i], NULL);
+        }
+        for(size_t i = 0; i < swapchainDepthImages.count; i++){
+            vkDestroyImage(device, swapchainDepthImages.items[i], NULL);
+        }
+        for(size_t i = 0; i < swapchainDepthImageMemories.count; i++){
+            vkFreeMemory(device, swapchainDepthImageMemories.items[i], NULL);
+        }
+        swapchainDepthImageViews.count = 0;
+        swapchainDepthImages.count = 0;
+        swapchainDepthImageMemories.count = 0;
+    }
+
     if(!initSwapchain()) return false;
 
     return true;

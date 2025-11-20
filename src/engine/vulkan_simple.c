@@ -12,8 +12,21 @@ bool vulkan_init_with_window(const char* title, size_t width, size_t height){
     if(!initVulkan()) return false;
     if(!initSurface()) return false;
     if(!initDevice()) return false;
-    if(!initSwapchain()) return false;
     if(!initCommandPool()) return false;
+    swapchainHasDepth = false;
+    if(!initSwapchain()) return false;
+    if(!initDescriptorPool()) return false;
+    return true;
+}
+
+bool vulkan_init_with_window_and_depth_buffer(const char* title, size_t width, size_t height){
+    platform_create_window(title, width, height);
+    if(!initVulkan()) return false;
+    if(!initSurface()) return false;
+    if(!initDevice()) return false;
+    if(!initCommandPool()) return false;
+    swapchainHasDepth = true;
+    if(!initSwapchain()) return false;
     if(!initDescriptorPool()) return false;
     return true;
 }

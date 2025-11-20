@@ -10,12 +10,18 @@
 #include "vulkan_initSwapchain.h"
 #include "vulkan_images.h"
 #include "vulkan_internal.h"
+#include "vulkan_helpers.h"
 
 VkSwapchainKHR swapchain;
 VkFormat swapchainImageFormat;
 VkExtent2D swapchainExtent;
 VkImages swapchainImages;
 VkImageViews swapchainImageViews;
+VkFormat swapchainDepthFormat = VK_FORMAT_UNDEFINED;
+VkImages swapchainDepthImages;
+VkImageViews swapchainDepthImageViews;
+VkDeviceMemories swapchainDepthImageMemories;
+bool swapchainHasDepth = false;
 
 typedef struct {
     VkSurfaceFormatKHR* items;
@@ -27,6 +33,39 @@ uint32_t clamp_uint32(uint32_t a, uint32_t min, uint32_t max){
     if(a < min) return min;
     if(a > max) return max;
     return a;
+}
+
+static bool findSupportedFormat(VkFormat* candidates_ptr, size_t candidates_count, VkImageTiling tiling, VkFormatFeatureFlags features, VkFormat* out) {
+    if(out == NULL) return false;
+    for(size_t i = 0; i < candidates_count; i++){
+        VkFormat format = candidates_ptr[i];
+        VkFormatProperties props;
+        vkGetPhysicalDeviceFormatProperties(physicalDevice, format, &props);
+
+        if (tiling == VK_IMAGE_TILING_LINEAR && (props.linearTilingFeatures & features) == features) {
+            *out = format;
+            return true;
+        } else if (tiling == VK_IMAGE_TILING_OPTIMAL && (props.optimalTilingFeatures & features) == features) {
+            *out = format;
+            return true;
+        }
+    }
+
+    return false;
+}
+
+static bool findDepthFormat(VkFormat* out) {
+    return findSupportedFormat(
+        (VkFormat*)((VkFormat[]){VK_FORMAT_D32_SFLOAT, VK_FORMAT_D32_SFLOAT_S8_UINT, VK_FORMAT_D24_UNORM_S8_UINT}),
+        3,
+        VK_IMAGE_TILING_OPTIMAL,
+        VK_FORMAT_FEATURE_DEPTH_STENCIL_ATTACHMENT_BIT,
+        out
+    );
+}
+
+static bool hasStencilComponent(VkFormat format) {
+    return format == VK_FORMAT_D32_SFLOAT_S8_UINT || format == VK_FORMAT_D24_UNORM_S8_UINT;
 }
 
 bool initSwapchain(){
@@ -112,6 +151,52 @@ bool initSwapchain(){
 
     for(int i = 0; i < swapchainImageViews.count; i++){
         if(!vkCreateImageViewEX(device, swapchainImages.items[i],swapchainImageFormat,VK_IMAGE_ASPECT_COLOR_BIT,&swapchainImageViews.items[i])) return false;
+    }
+
+    if(swapchainHasDepth){
+        if(swapchainDepthFormat == VK_FORMAT_UNDEFINED){
+            if(!findDepthFormat(&swapchainDepthFormat)) return false;
+        }
+
+        da_resize(&swapchainDepthImages,swapchainImages.count);
+        da_resize(&swapchainDepthImageMemories, swapchainDepthImages.count);
+        for(int i = 0; i < swapchainDepthImages.count;i++){
+            if(!vkCreateImageEX(device, swapchainExtent.width,swapchainExtent.height, swapchainDepthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &swapchainDepthImages.items[i], &swapchainDepthImageMemories.items[i])) return false;
+        }
+
+        VkCommandBuffer tempCmd = vkCmdBeginSingleTime();
+
+        for(size_t i = 0; i < swapchainDepthImages.count; i++){
+            VkImageMemoryBarrier barrier = {0};
+            barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
+            barrier.pNext = NULL;
+            barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
+            barrier.newLayout = hasStencilComponent(swapchainDepthFormat) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
+            barrier.image = swapchainDepthImages.items[i];
+            barrier.subresourceRange.aspectMask = VK_IMAGE_ASPECT_DEPTH_BIT;
+            barrier.subresourceRange.baseMipLevel = 0;
+            barrier.subresourceRange.levelCount = 1;
+            barrier.subresourceRange.baseArrayLayer = 0;
+            barrier.subresourceRange.layerCount = 1;
+            vkCmdPipelineBarrier(
+                tempCmd,
+                VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT,
+                VK_PIPELINE_STAGE_EARLY_FRAGMENT_TESTS_BIT,
+                0,
+                0, NULL,
+                0, NULL,
+                1, &barrier
+            );
+        }
+
+        vkCmdEndSingleTime(tempCmd);
+
+        da_resize(&swapchainDepthImageViews,swapchainDepthImages.count);
+        for(int i = 0; i < swapchainDepthImageViews.count; i++){
+            if(!vkCreateImageViewEX(device, swapchainDepthImages.items[i],swapchainDepthFormat,VK_IMAGE_ASPECT_DEPTH_BIT,&swapchainDepthImageViews.items[i])) return false;
+        }
     }
 
     return true;

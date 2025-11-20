@@ -19,6 +19,7 @@ typedef struct {
     bool depthTest;
     VkPrimitiveTopology topology;
     VkFormat outColorFormat;
+    VkFormat outDepthFormat;
 } CreateGraphicsPipelineARGS;
 
 bool vkCreateGraphicPipeline_opts(CreateGraphicsPipelineARGS args);
@@ -30,6 +31,7 @@ bool vkCreateGraphicPipeline_opts(CreateGraphicsPipelineARGS args);
     .pipelineOUT = pipelinePtrOut,\
     .pipelineLayoutOUT = pipelineLayoutPtrOut,\
     .outColorFormat = outColorFormatIn,\
+    .outDepthFormat = VK_FORMAT_UNDEFINED, \
     __VA_ARGS__})
 
 #endif

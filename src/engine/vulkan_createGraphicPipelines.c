@@ -175,11 +175,7 @@ bool vkCreateGraphicPipeline_opts(CreateGraphicsPipelineARGS args){
     pipelineRenderingCreateInfo.viewMask = 0;
     pipelineRenderingCreateInfo.colorAttachmentCount = 1;
     pipelineRenderingCreateInfo.pColorAttachmentFormats = &args.outColorFormat;
-    if(args.depthTest){
-        pipelineRenderingCreateInfo.depthAttachmentFormat = VK_FORMAT_D16_UNORM;
-    }else{
-        pipelineRenderingCreateInfo.depthAttachmentFormat = VK_FORMAT_UNDEFINED;
-    }
+    pipelineRenderingCreateInfo.depthAttachmentFormat = args.outDepthFormat;
     pipelineRenderingCreateInfo.stencilAttachmentFormat = VK_FORMAT_UNDEFINED;
 
     VkGraphicsPipelineCreateInfo graphicsPipelineCreateInfo = {0};

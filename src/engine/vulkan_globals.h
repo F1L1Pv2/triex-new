@@ -7,6 +7,7 @@ extern VkDevice device;
 extern VkSurfaceKHR surface;
 extern VkSwapchainKHR swapchain;
 extern VkFormat swapchainImageFormat;
+extern VkFormat swapchainDepthFormat;
 extern VkExtent2D swapchainExtent;
 extern VkQueue computeQueue;
 extern VkQueue graphicsQueue;
@@ -24,8 +25,18 @@ typedef struct {
     size_t capacity;
 } VkImageViews;
 
+typedef struct {
+    VkDeviceMemory* items;
+    uint32_t count;
+    size_t capacity;
+} VkDeviceMemories;
+
 extern VkImages swapchainImages;
 extern VkImageViews swapchainImageViews;
+extern bool swapchainHasDepth;
+extern VkImages swapchainDepthImages;
+extern VkImageViews swapchainDepthImageViews;
+extern VkDeviceMemories swapchainDepthImageMemories;
 
 extern VkCommandPool commandPool;
 extern VkDescriptorPool descriptorPool;
