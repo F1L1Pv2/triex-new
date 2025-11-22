@@ -34,6 +34,7 @@ typedef struct {
 extern VkImages swapchainImages;
 extern VkImageViews swapchainImageViews;
 extern bool swapchainHasDepth;
+extern bool swapchainHasStencil;
 extern VkImages swapchainDepthImages;
 extern VkImageViews swapchainDepthImageViews;
 extern VkDeviceMemories swapchainDepthImageMemories;

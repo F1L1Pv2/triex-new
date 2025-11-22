@@ -24,6 +24,9 @@ static char** s_dropped_files = NULL;
 static int s_dropped_files_count = 0;
 static bool trackingMouse = false;
 
+static bool s_mouse_locked = false;
+static POINT s_center_point;
+
 LRESULT HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
     switch (msg){
         case WM_DROPFILES: {
@@ -74,6 +77,7 @@ LRESULT HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
 
         case WM_MOUSEMOVE:
         {
+            if (s_mouse_locked) break;
             input.mouse_x = LOWORD(lParam);
             input.mouse_y = HIWORD(lParam);
 
@@ -85,6 +89,31 @@ LRESULT HandleMsg(HWND hWnd, UINT msg, WPARAM wParam, LPARAM lParam) {
                 trackingMouse = true;
             }
             break;
+        }
+
+        case WM_INPUT:
+        {
+            if (!s_mouse_locked) break;
+
+            RAWINPUT raw;
+            UINT size = sizeof(raw);
+
+            GetRawInputData((HRAWINPUT)lParam, RID_INPUT, &raw, &size,
+                            sizeof(RAWINPUTHEADER));
+
+            if (raw.header.dwType == RIM_TYPEMOUSE) {
+
+                LONG dx = raw.data.mouse.lLastX;
+                LONG dy = raw.data.mouse.lLastY;
+
+                // FPS-style accumulated deltas per frame
+                input.mouse_x += dx;
+                input.mouse_y += dy;
+
+                // recenter cursor (important to avoid hitting window borders)
+                SetCursorPos(s_center_point.x, s_center_point.y);
+            }
+            return 0;
         }
 
         case WM_MOUSELEAVE: {
@@ -207,12 +236,25 @@ void platform_create_window(const char* title, size_t width, size_t height){
     platform_fill_keycode_lookup_table();
 
     timeBeginPeriod(1);
+
+    RAWINPUTDEVICE rid;
+    rid.usUsagePage = 0x01;  // Generic Desktop Controls
+    rid.usUsage = 0x02;      // Mouse
+    rid.dwFlags = RIDEV_INPUTSINK;
+    rid.hwndTarget = hwnd;
+
+    RegisterRawInputDevices(&rid, 1, sizeof(rid));
 }
 
 MSG msg;
 
 bool platform_window_handle_events(){
     input.scroll = 0;
+
+    if (s_mouse_locked) {
+        input.mouse_x = 0;
+        input.mouse_y = 0;
+    }
     
     for(int i = 0; i < sizeof(input.keys) / sizeof(input.keys[0]); i++){
         input.keys[i].justPressed = 0;
@@ -227,8 +269,53 @@ bool platform_window_handle_events(){
     return !error;
 }
 
-void platform_sleep(size_t milis){
-    Sleep(milis);
+static void busy_wait_ticks(long long ticks_to_wait)
+{
+    LARGE_INTEGER start, cur;
+    QueryPerformanceCounter(&start);
+    long long target = start.QuadPart + ticks_to_wait;
+
+    for (;;) {
+        QueryPerformanceCounter(&cur);
+        if (cur.QuadPart >= target)
+            break;
+        YieldProcessor();   // pause instruction / CPU hint
+    }
+}
+
+
+void platform_sleep(size_t milis)
+{
+    if (milis == 0)
+        return;
+
+    const double spin_threshold_ms = 1.5; // tune: 1–3 ms is typical
+
+    LARGE_INTEGER freq_li;
+    QueryPerformanceFrequency(&freq_li);
+    long long freq = freq_li.QuadPart;
+
+    double ticks_per_ms = (double)freq / 1000.0;
+    long long total_ticks = (long long)( (double)milis * ticks_per_ms + 0.5 );
+
+    if ((double)milis > spin_threshold_ms)
+    {
+        // Sleep for the coarse part
+        size_t coarse_ms = (size_t)((double)milis - spin_threshold_ms);
+        if (coarse_ms > 0)
+            Sleep((DWORD) coarse_ms);
+
+        // Now busy-spin the remainder
+        long long spin_ticks =
+            (long long)(spin_threshold_ms * ticks_per_ms + 0.5);
+
+        busy_wait_ticks(spin_ticks);
+    }
+    else
+    {
+        // Entire wait fits inside high-res busy loop
+        busy_wait_ticks(total_ticks);
+    }
 }
 
 uint64_t platform_get_time_milis(){
@@ -462,6 +549,50 @@ void* platform_load_dynamic_function(void* dll, const char* funName)
   FARPROC proc = GetProcAddress((HMODULE)dll, funName);
 
   return (void*)proc;
+}
+
+void platform_lock_mouse()
+{
+    if (s_mouse_locked) return;
+
+    s_mouse_locked = true;
+
+    // Hide cursor
+    ShowCursor(FALSE);
+
+    // Center point in screen coords
+    RECT rect;
+    GetClientRect(hwnd, &rect);
+
+    POINT center = {
+        (rect.right - rect.left) / 2,
+        (rect.bottom - rect.top) / 2
+    };
+
+    ClientToScreen(hwnd, &center);
+    s_center_point = center;
+
+    // Move cursor to center
+    SetCursorPos(center.x, center.y);
+
+    // Lock cursor to window
+    RECT clip = { rect.left, rect.top, rect.right, rect.bottom };
+    ClientToScreen(hwnd, (POINT*)&clip.left);
+    ClientToScreen(hwnd, (POINT*)&clip.right);
+    ClipCursor(&clip);
+}
+
+void platform_unlock_mouse()
+{
+    if (!s_mouse_locked) return;
+
+    s_mouse_locked = false;
+
+    // Show cursor
+    ShowCursor(TRUE);
+
+    // Release lock
+    ClipCursor(NULL);
 }
 
 #ifndef DEBUG

@@ -22,6 +22,7 @@ VkImages swapchainDepthImages;
 VkImageViews swapchainDepthImageViews;
 VkDeviceMemories swapchainDepthImageMemories;
 bool swapchainHasDepth = false;
+bool swapchainHasStencil = false;
 
 typedef struct {
     VkSurfaceFormatKHR* items;
@@ -161,17 +162,19 @@ bool initSwapchain(){
         da_resize(&swapchainDepthImages,swapchainImages.count);
         da_resize(&swapchainDepthImageMemories, swapchainDepthImages.count);
         for(int i = 0; i < swapchainDepthImages.count;i++){
-            if(!vkCreateImageEX(device, swapchainExtent.width,swapchainExtent.height, swapchainDepthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &swapchainDepthImages.items[i], &swapchainDepthImageMemories.items[i])) return false;
+            if(!vkCreateImageEX(device, swapchainExtent.width,swapchainExtent.height, swapchainDepthFormat, VK_IMAGE_TILING_OPTIMAL, VK_IMAGE_USAGE_DEPTH_STENCIL_ATTACHMENT_BIT | VK_IMAGE_USAGE_SAMPLED_BIT, VK_MEMORY_PROPERTY_DEVICE_LOCAL_BIT, &swapchainDepthImages.items[i], &swapchainDepthImageMemories.items[i])) return false;
         }
 
         VkCommandBuffer tempCmd = vkCmdBeginSingleTime();
+
+        swapchainHasStencil = hasStencilComponent(swapchainDepthFormat);
 
         for(size_t i = 0; i < swapchainDepthImages.count; i++){
             VkImageMemoryBarrier barrier = {0};
             barrier.sType = VK_STRUCTURE_TYPE_IMAGE_MEMORY_BARRIER;
             barrier.pNext = NULL;
             barrier.oldLayout = VK_IMAGE_LAYOUT_UNDEFINED;
-            barrier.newLayout = hasStencilComponent(swapchainDepthFormat) ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
+            barrier.newLayout = swapchainHasStencil ? VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL : VK_IMAGE_LAYOUT_DEPTH_ATTACHMENT_OPTIMAL;
             barrier.srcQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             barrier.dstQueueFamilyIndex = VK_QUEUE_FAMILY_IGNORED;
             barrier.image = swapchainDepthImages.items[i];

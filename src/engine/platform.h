@@ -17,6 +17,8 @@ void platform_disable_fullscreen();
 bool platform_drag_and_drop_available();
 char** platform_get_drag_and_drop_files(int* count);
 void platform_release_drag_and_drop(char** files, int count);
+void platform_lock_mouse();
+void platform_unlock_mouse();
 
 bool platform_free_dynamic_library(void* dll);
 void* platform_load_dynamic_library(const char* dll);
